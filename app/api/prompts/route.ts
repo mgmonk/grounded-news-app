@@ -1,5 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+
+const CATEGORY_MAP: Record<string, { category?: string }> = {
+  World: { category: "general" },
+  Politics: { category: "general" },
+  Climate: { category: "science" },
+  "Science & Health": { category: "health" },
+  Culture: { category: "entertainment" },
+};
 
 const SYSTEM_PROMPT = `You are a compassionate journaling guide helping anxious news readers process their feelings about current events. Your goal is not to analyze the news — it is to help the user understand their own emotional reaction to it, and leave the session feeling like an agent in their own life rather than a passive observer of world events.
 
@@ -41,7 +49,7 @@ Rules for the output:
 - The response must be parseable directly by JSON.parse() with no preprocessing or trimming.
 - Use straight double quotes for all strings. Escape any internal double quotes and newlines properly.`;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const newsApiKey = process.env.NEWS_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -60,10 +68,35 @@ export async function GET() {
   }
 
   try {
+    const category = request.nextUrl.searchParams.get("category");
+    const mapping = category ? CATEGORY_MAP[category] : undefined;
+
+    const params = new URLSearchParams({
+      country: "us",
+      pageSize: "1",
+      apiKey: newsApiKey,
+    });
+    if (mapping?.category) {
+      params.set("category", mapping.category);
+    }
+
     const res = await fetch(
-      `https://newsapi.org/v2/top-headlines?country=us&pageSize=1&apiKey=${newsApiKey}`,
+      `https://newsapi.org/v2/top-headlines?${params.toString()}`,
       { cache: "no-store" }
     );
+
+    const data = await res.json();
+
+    if (mapping) {
+      console.log("NewsAPI response (category filter applied):", {
+        category,
+        newsApiCategory: mapping.category ?? null,
+        httpStatus: res.status,
+        apiStatus: data.status,
+        totalResults: data.totalResults,
+        error: data.message ?? null,
+      });
+    }
 
     if (!res.ok) {
       return NextResponse.json(
@@ -72,7 +105,6 @@ export async function GET() {
       );
     }
 
-    const data = await res.json();
     const article = data.articles?.[0];
 
     if (!article) {

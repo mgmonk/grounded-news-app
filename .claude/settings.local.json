@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx --yes create-next-app@latest . --ts --tailwind --app --no-src-dir --eslint --import-alias \"@/*\" --use-npm --yes)"
+      "Bash(npx --yes create-next-app@latest . --ts --tailwind --app --no-src-dir --eslint --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(gh auth *)",
+      "Bash(git config *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
