@@ -87,17 +87,6 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json();
 
-    if (mapping) {
-      console.log("NewsAPI response (category filter applied):", {
-        category,
-        newsApiCategory: mapping.category ?? null,
-        httpStatus: res.status,
-        apiStatus: data.status,
-        totalResults: data.totalResults,
-        error: data.message ?? null,
-      });
-    }
-
     if (!res.ok) {
       return NextResponse.json(
         { error: `NewsAPI request failed with status ${res.status}` },
