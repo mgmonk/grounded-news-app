@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
 
     const headline: string = article.fields?.headline ?? "";
     const description: string = article.fields?.trailText ?? "";
+    const articleUrl: string = article.webUrl ?? "";
 
     const client = new Anthropic({ apiKey: anthropicApiKey });
 
@@ -139,6 +140,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       headline,
       description,
+      articleUrl,
       prompts,
     });
   } catch (err) {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type PromptsResponse = {
   headline: string;
+  articleUrl: string;
   prompts: {
     prompts: string[];
     counterpoint: string;
@@ -105,6 +106,16 @@ export default function Journal() {
                   Today&apos;s headline
                 </p>
                 <p className="text-sm text-stone-500">{data.headline}</p>
+                {data.articleUrl && (
+                  <a
+                    href={data.articleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs text-stone-400 transition-colors hover:text-stone-600"
+                  >
+                    Read the full story →
+                  </a>
+                )}
               </header>
 
               <p className="text-center text-base italic leading-relaxed text-stone-600">
