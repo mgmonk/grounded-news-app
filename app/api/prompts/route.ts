@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const CATEGORY_MAP: Record<string, { category?: string }> = {
-  World: { category: "general" },
-  Politics: { category: "general" },
-  Climate: { category: "science" },
-  "Science & Health": { category: "health" },
-  Culture: { category: "entertainment" },
+const CATEGORY_MAP: Record<string, string> = {
+  World: "world",
+  Politics: "politics",
+  Climate: "environment",
+  "Science & Health": "science",
+  Culture: "culture",
 };
 
 const SYSTEM_PROMPT = `You are a compassionate journaling guide helping anxious news readers process their feelings about current events. Your goal is not to analyze the news — it is to help the user understand their own emotional reaction to it, and leave the session feeling like an agent in their own life rather than a passive observer of world events.
@@ -50,12 +50,12 @@ Rules for the output:
 - Use straight double quotes for all strings. Escape any internal double quotes and newlines properly.`;
 
 export async function GET(request: NextRequest) {
-  const newsApiKey = process.env.NEWS_API_KEY;
+  const guardianApiKey = process.env.GUARDIAN_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
-  if (!newsApiKey) {
+  if (!guardianApiKey) {
     return NextResponse.json(
-      { error: "NEWS_API_KEY is not configured" },
+      { error: "GUARDIAN_API_KEY is not configured" },
       { status: 500 }
     );
   }
@@ -69,32 +69,33 @@ export async function GET(request: NextRequest) {
 
   try {
     const category = request.nextUrl.searchParams.get("category");
-    const mapping = category ? CATEGORY_MAP[category] : undefined;
+    const section = category ? CATEGORY_MAP[category] : undefined;
 
     const params = new URLSearchParams({
-      country: "us",
-      pageSize: "1",
-      apiKey: newsApiKey,
+      "show-fields": "headline,trailText",
+      "page-size": "1",
+      "order-by": section ? "newest" : "relevance",
+      "api-key": guardianApiKey,
     });
-    if (mapping?.category) {
-      params.set("category", mapping.category);
+    if (section) {
+      params.set("section", section);
     }
 
     const res = await fetch(
-      `https://newsapi.org/v2/top-headlines?${params.toString()}`,
+      `https://content.guardianapis.com/search?${params.toString()}`,
       { cache: "no-store" }
     );
 
     const data = await res.json();
 
-    if (!res.ok) {
+    if (!res.ok || data.response?.status !== "ok") {
       return NextResponse.json(
-        { error: `NewsAPI request failed with status ${res.status}` },
+        { error: `Guardian API request failed with status ${res.status}` },
         { status: 502 }
       );
     }
 
-    const article = data.articles?.[0];
+    const article = data.response?.results?.[0];
 
     if (!article) {
       return NextResponse.json(
@@ -103,9 +104,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rawHeadline: string = article.title ?? "";
-    const headline = rawHeadline.split(" - ")[0].trim();
-    const description: string = article.description ?? "";
+    const headline: string = article.fields?.headline ?? "";
+    const description: string = article.fields?.trailText ?? "";
 
     const client = new Anthropic({ apiKey: anthropicApiKey });
 
