@@ -11,7 +11,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
 const SYSTEM_PROMPT = `You are a compassionate journaling guide helping anxious news readers process their feelings about current events. Your goal is not to analyze the news — it is to help the user understand their own emotional reaction to it, and leave the session feeling like an agent in their own life rather than a passive observer of world events.
 
-You will be given today's top news headline and a brief summary.
+You will be given the article's section and pillar alongside the headline and summary. Use the section to inform the emotional register of Prompt 2 — a World News story calls for different excavation than a Culture story. If the pillar is 'Opinion', note this and frame Prompt 2 around the user's reaction to the argument being made, not the news event itself.
 
 Your task:
 1. Identify the emotional weight of the story without editorializing or taking political positions.
@@ -71,10 +71,13 @@ export async function GET(request: NextRequest) {
     const category = request.nextUrl.searchParams.get("category");
     const section = category ? CATEGORY_MAP[category] : undefined;
 
+    const today = new Date().toISOString().slice(0, 10);
+
     const params = new URLSearchParams({
-      "show-fields": "headline,trailText",
+      "show-fields": "headline,trailText,sectionName",
       "page-size": "1",
-      "order-by": section ? "newest" : "relevance",
+      "order-by": "newest",
+      "from-date": today,
       "api-key": guardianApiKey,
     });
     if (section) {
@@ -105,7 +108,9 @@ export async function GET(request: NextRequest) {
     }
 
     const headline: string = article.fields?.headline ?? "";
-    const description: string = article.fields?.trailText ?? "";
+    const description: string = (article.fields?.trailText ?? "").replace(/<[^>]*>/g, "");
+    const sectionName: string = article.fields?.sectionName ?? article.sectionName ?? "";
+    const pillarName: string = article.pillarName ?? "";
     const articleUrl: string = article.webUrl ?? "";
 
     const client = new Anthropic({ apiKey: anthropicApiKey });
@@ -117,7 +122,7 @@ export async function GET(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Today's headline: ${headline}\n\nSummary: ${description}`,
+          content: `Section: ${sectionName}\nPillar: ${pillarName}\nHeadline: ${headline}\nSummary: ${description}`,
         },
       ],
     });
@@ -140,6 +145,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       headline,
       description,
+      sectionName,
       articleUrl,
       prompts,
     });
